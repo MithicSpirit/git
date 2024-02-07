@@ -1,3 +1,16 @@
+stash.includeUntracked::
+	Boolean option that configures whether the `git stash push` and `git
+	stash save` commands also stash untracked files by default. This option
+	is ignored if `--include-untracked`, `--no-include-untracked`, `--all`,
+	`--patch`, or `--staged` are used. Defaults to `false`. See
+	linkgit:git-stash[1].
+
+stash.keepIndex::
+	Boolean option that configures whether the `git stash push` and `git
+	stash save` commands also stash changes that have been added to the
+	index. This option is ignored if `--keep-index`, `--no-keep-index`, or
+	`--patch` are used. Defaults to `false`. See linkgit:git-stash[1].
+
 stash.showIncludeUntracked::
 	If this is set to true, the `git stash show` command will show
 	the untracked files of a stash entry.  Defaults to false. See

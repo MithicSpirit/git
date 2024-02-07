@@ -1568,4 +1568,123 @@ test_expect_success 'stash apply reports a locked index' '
 	)
 '
 
+setup_dirty() {
+	echo a >tracked &&
+	echo b >added-modified &&
+	git add tracked added-modified &&
+	git commit -m initial &&
+	echo 1 >>tracked &&
+	echo 2 >>added-modified &&
+	echo c >added-new &&
+	echo d >untracked &&
+	git add added-modified added-new
+}
+
+test_expect_success 'stash.includeuntracked equivalent to --include-untracked' '
+	git init using_opt &&
+	test_when_finished rm -rf using_opt &&
+	(
+		cd using_opt &&
+		setup_dirty &&
+		git stash push &&
+		git stash show -u --patch >../using-opt
+	) &&
+
+	test_config stash.includeuntracked true &&
+	git init using_config &&
+	test_when_finished rm -rf using_config &&
+	(
+		cd using_config &&
+		setup_dirty &&
+		git stash push &&
+		git stash show -u --patch >../using-config
+	) &&
+
+	test_cmp using-opt using-config
+'
+
+test_expect_success 'stash.includeuntracked yields to --no-include-untracked' '
+	git init no_config &&
+	test_when_finished rm -rf no_config &&
+	(
+		cd no_config &&
+		setup_dirty &&
+		git stash push --no-include-untracked &&
+		git stash show -u --patch >../no-config
+	) &&
+
+	test_config stash.includeuntracked true &&
+	git init using_config &&
+	test_when_finished rm -rf using_config &&
+	(
+		cd using_config &&
+		setup_dirty &&
+		git stash push --no-include-untracked &&
+		git stash show -u --patch >../using-config
+	) &&
+
+	test_cmp no-config using-config
+'
+
+test_expect_success 'stash.includeuntracked succeeds with --patch' '
+	test_config stash.includeuntracked true &&
+	git stash --patch
+'
+
+test_expect_success 'stash.includeuntracked succeeds with --staged' '
+	test_config stash.includeuntracked true &&
+	git stash --staged
+'
+
+test_expect_success 'stash.keepindex equivalent to --keep-index' '
+	git init using_opt &&
+	test_when_finished rm -rf using_opt &&
+	(
+		cd using_opt &&
+		setup_dirty &&
+		git stash push &&
+		git stash show -u --patch >../using-opt
+	) &&
+
+	test_config stash.keepindex true &&
+	git init using_config &&
+	test_when_finished rm -rf using_config &&
+	(
+		cd using_config &&
+		setup_dirty &&
+		git stash push &&
+		git stash show -u --patch >../using-config
+	) &&
+
+	test_cmp using-opt using-config
+'
+
+test_expect_success 'stash.keepindex yields to --no-keep-index' '
+	git init no_config &&
+	test_when_finished rm -rf no_config &&
+	(
+		cd no_config &&
+		setup_dirty &&
+		git stash push --no-keep-index &&
+		git stash show -u --patch >../no-config
+	) &&
+
+	test_config stash.keepindex true &&
+	git init using_config &&
+	test_when_finished rm -rf using_config &&
+	(
+		cd using_config &&
+		setup_dirty &&
+		git stash push --no-keep-index &&
+		git stash show -u --patch >../using-config
+	) &&
+
+	test_cmp no-config using-config
+'
+
+test_expect_success 'stash.keepindex succeeds with --patch' '
+	test_config stash.keepindex true &&
+	git stash --patch
+'
+
 test_done

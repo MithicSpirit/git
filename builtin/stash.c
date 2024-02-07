@@ -839,6 +839,8 @@ static int list_stash(int argc, const char **argv, const char *prefix)
 static int show_stat = 1;
 static int show_patch;
 static int show_include_untracked;
+static int default_keep_index;
+static int default_include_untracked;
 
 static int git_stash_config(const char *var, const char *value,
 			    const struct config_context *ctx, void *cb)
@@ -853,6 +855,14 @@ static int git_stash_config(const char *var, const char *value,
 	}
 	if (!strcmp(var, "stash.showincludeuntracked")) {
 		show_include_untracked = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "stash.keepindex")) {
+		default_keep_index = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "stash.includeuntracked")) {
+		default_include_untracked = git_config_bool(var, value);
 		return 0;
 	}
 	return git_diff_basic_config(var, value, ctx, cb);
@@ -1512,26 +1522,43 @@ static int do_push_stash(const struct pathspec *ps, const char *stash_msg, int q
 	struct strbuf stash_msg_buf = STRBUF_INIT;
 	struct strbuf untracked_files = STRBUF_INIT;
 
-	if (patch_mode && keep_index == -1)
-		keep_index = 1;
-
-	if (patch_mode && include_untracked) {
-		fprintf_ln(stderr, _("Can't use --patch and --include-untracked"
-				     " or --all at the same time"));
-		ret = -1;
-		goto done;
+	if (keep_index == -1) {
+		if (patch_mode)
+			keep_index = 1;
+		else
+			keep_index = default_keep_index;
 	}
 
-	/* --patch overrides --staged */
-	if (patch_mode)
+	if (patch_mode) {
+		if (include_untracked == -1)
+			include_untracked = 0;
+		else if (include_untracked) {
+			fprintf_ln(stderr,
+				   _("Can't use --patch and --include-untracked"
+				     " or --all at the same time"));
+			ret = -1;
+			goto done;
+		}
+
+		/* --patch overrides --staged */
 		only_staged = 0;
-
-	if (only_staged && include_untracked) {
-		fprintf_ln(stderr, _("Can't use --staged and --include-untracked"
-				     " or --all at the same time"));
-		ret = -1;
-		goto done;
 	}
+
+	if (only_staged) {
+		if (include_untracked == -1)
+			include_untracked = 0;
+		else if (include_untracked) {
+			fprintf_ln(
+				stderr,
+				_("Can't use --staged and --include-untracked"
+				  " or --all at the same time"));
+			ret = -1;
+			goto done;
+		}
+	}
+
+	if (include_untracked == -1)
+		include_untracked = default_include_untracked;
 
 	repo_read_index_preload(the_repository, NULL, 0);
 	if (!include_untracked && ps->nr) {
@@ -1691,7 +1718,7 @@ static int do_push_stash(const struct pathspec *ps, const char *stash_msg, int q
 			goto done;
 		}
 
-		if (keep_index < 1) {
+		if (!keep_index) {
 			struct child_process cp = CHILD_PROCESS_INIT;
 
 			cp.git_cmd = 1;
@@ -1721,7 +1748,7 @@ static int push_stash(int argc, const char **argv, const char *prefix,
 	int keep_index = -1;
 	int only_staged = 0;
 	int patch_mode = 0;
-	int include_untracked = 0;
+	int include_untracked = -1;
 	int quiet = 0;
 	int pathspec_file_nul = 0;
 	const char *stash_msg = NULL;
@@ -1801,7 +1828,7 @@ static int save_stash(int argc, const char **argv, const char *prefix)
 	int keep_index = -1;
 	int only_staged = 0;
 	int patch_mode = 0;
-	int include_untracked = 0;
+	int include_untracked = -1;
 	int quiet = 0;
 	int ret = 0;
 	const char *stash_msg = NULL;
